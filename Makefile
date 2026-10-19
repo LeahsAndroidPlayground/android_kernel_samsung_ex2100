@@ -2,7 +2,9 @@
 VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 304
-EXTRAVERSION = -openela
+# I love you openela, but I also want a clean uname -r.
+# EXTRAVERSION = -openela
+EXTRAVERSION = 
 NAME = Kleptomaniac Octopus
 
 # *DOCUMENTATION*

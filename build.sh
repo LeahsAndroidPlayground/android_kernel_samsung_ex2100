@@ -148,37 +148,6 @@ fi
 rm -rf build/out/$MODEL
 mkdir -p build/out/$MODEL
 
-set_localversion() {
-
-    CONFIG_FILE="out/.config"
-    
-    BASE_LV=$(grep -E '^CONFIG_LOCALVERSION=' "$CONFIG_FILE" | cut -d'"' -f2)
-    
-    LV_SUFFIX=""
-
-    # Set Kernel Version Release
-    if [[ "$RECOVERY_OPTION" != "y" ]]; then
-        VRSN=$KVER
-    else
-        VRSN=$RVER
-    fi
-
-    if [[ "$RECOVERY_OPTION" == "y" ]]; then
-        LV_SUFFIX="-TWRP"
-    elif [[ "$KSU_OPTION" == "y" && "$SUSFS_OPTION" == "y" ]]; then
-        LV_SUFFIX="-KSUN-SUSFS"
-    elif [[ "$KSU_OPTION" == "y" ]]; then
-        LV_SUFFIX="-KSUN"
-    else
-        LV_SUFFIX="-VANILLA"
-    fi
-
-    UPDATED_LV="${BASE_LV}${VRSN}${LV_SUFFIX}"
-
-    ./scripts/config --file "$CONFIG_FILE" \
-        --set-str LOCALVERSION "$UPDATED_LV"
-}
-
 build_kernel() {
     # Build kernel image
     echo "-----------------------------------------------"
@@ -210,8 +179,6 @@ build_kernel() {
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
     make ${MAKE_ARGS} -j$CORES exynos2100_defconfig $MODEL.config $RECOVERY $KSU $SUSFS || abort
-
-    set_localversion
 
     echo "Building kernel..."
     echo "-----------------------------------------------"
@@ -446,16 +413,12 @@ build_zip() {
 
     pushd "$AK3_DIR" > /dev/null
 
-    version=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' ../arch/arm64/configs/exynos2100_defconfig | cut -d '"' -f 2)
-    version=${version:1}
     DATE=`date +"%d-%m-%Y_%H-%M-%S"`
 
-    if [[ "$KSU_OPTION" == "y" && "$SUSFS_OPTION" == "y" ]]; then
-        NAME="${version}${KVER}_${MODEL}_KSUN_SUSFS_OFFICIAL_${DATE}.zip"
-    elif [[ "$KSU_OPTION" == "y" ]]; then
-        NAME="${version}${KVER}_${MODEL}_KSUN_OFFICIAL_${DATE}.zip"
+    if [[ "$KSU_OPTION" == "y" ]]; then
+        NAME="CuckooKernel-${KVER}_${MODEL}_KSU_OFFICIAL_${DATE}.zip"
     else
-        NAME="${version}${KVER}_${MODEL}_VANILLA_OFFICIAL_${DATE}.zip"
+        NAME="CuckooKernel-${KVER}_${MODEL}_VANILLA_OFFICIAL_${DATE}.zip"
     fi
     zip -r9 "../build/out/$MODEL/$NAME" * -x ".git*" "README.md" "*placeholder" || abort
     popd > /dev/null
