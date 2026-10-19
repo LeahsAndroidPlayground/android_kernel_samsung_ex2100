@@ -21,7 +21,6 @@ Usage: $(basename "$0") [options]
 Options:
     -m, --model [value]    Specify the model code of the phone
     -k, --ksu [y/N]        Include KernelSU
-    -s, --susfs [y/N]      Include SuSFS
     -r, --recovery [y/N]   Compile kernel for an Android Recovery																 
 EOF
 }
@@ -36,10 +35,6 @@ while [[ $# -gt 0 ]]; do
             KSU_OPTION="$2"
             shift 2
             ;;
-        --susfs|-s)
-            SUSFS_OPTION="$2"
-            shift 2
-            ;;
         --recovery|-r)
             RECOVERY_OPTION="$2"
             shift 2
@@ -50,32 +45,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-enable_susfs() {
-
-    KSUN_DIR="$PWD/KernelSU-Next/kernel"
-    SUS_MARKER="config KSU_SUSFS"
-
-    if [[ "$SUSFS_OPTION" == "y" ]]; then
-
-        if grep -q "$SUS_MARKER" "$KSUN_DIR/Kconfig" 2>/dev/null; then
-            echo "SuSFS already enabled, skipping patch."
-            return
-        fi
-
-        echo "Applying SuSFS patch..."
-
-        patch -d "$PWD/KernelSU-Next" -p1 < "$PWD/patches/enable-susfs.patch" || {
-            echo "Failed to apply SuSFS patch!"
-            exit 1
-        }
-
-    else
-        echo "Disabling SuSFS..."
-
-        patch -R -N -d "$PWD/KernelSU-Next" -p1 < "$PWD/patches/enable-susfs.patch"
-    fi
-}
 
 echo "Preparing the build environment..."
 
@@ -141,10 +110,6 @@ if [[ "$KSU_OPTION" == "y" ]]; then
     KSU=ksu.config
 fi
 
-if [[ "$SUSFS_OPTION" == "y" ]]; then
-    SUSFS=susfs.config
-fi
-
 rm -rf build/out/$MODEL
 mkdir -p build/out/$MODEL
 
@@ -156,20 +121,14 @@ build_kernel() {
     if [[ "$RECOVERY_OPTION" == "y" ]]; then
         RECOVERY=recovery.config
         KSU_OPTION=n
-        SUSFS_OPTION=n
     fi
     if [ -z "$KSU" ]; then
         echo "KSU: N"
     else
         echo "KSU: $KSU"
     fi
-    if [ -z "$SUSFS" ]; then
-        echo "SUSFS: N"
-    else
-        echo "SUSFS: $SUSFS"
-    fi
     if [ -z "$RECOVERY" ]; then
-    echo "Recovery: N"
+    	echo "Recovery: N"
     else
         echo "Recovery: Y"
     fi
@@ -416,9 +375,9 @@ build_zip() {
     DATE=`date +"%d-%m-%Y_%H-%M-%S"`
 
     if [[ "$KSU_OPTION" == "y" ]]; then
-        NAME="CuckooKernel-${KVER}_${MODEL}_KSU_OFFICIAL_${DATE}.zip"
+        NAME="CuckooKernel${KVER}_${MODEL}_KSU_OFFICIAL_${DATE}.zip"
     else
-        NAME="CuckooKernel-${KVER}_${MODEL}_VANILLA_OFFICIAL_${DATE}.zip"
+        NAME="CuckooKernel${KVER}_${MODEL}_VANILLA_OFFICIAL_${DATE}.zip"
     fi
     zip -r9 "../build/out/$MODEL/$NAME" * -x ".git*" "README.md" "*placeholder" || abort
     popd > /dev/null
@@ -429,8 +388,6 @@ if [[ "$KSU_OPTION" != "y" ]]; then
     sed -i "\|$KSU_VAR|d" "$KCONFIG_FILE"
 
 else
-    enable_susfs
-    
     if ! grep -Fxq "$KSU_VAR" "$KCONFIG_FILE"; then
         sed -i "\|endmenu|i $KSU_VAR" "$KCONFIG_FILE"
     fi
